@@ -8,7 +8,7 @@
 clear all
 close all
 clc
-global alpha thetas thetar n m Ks psic cW rho K KL KR TR TL di IMAX dx dt
+global alpha thetas thetar n m Ks psic cW rho K KL KR TR TL di IMAX dx dt Rain
 
 %Phisical model parameters in SI units
 thetaMethod = 1;
@@ -36,6 +36,7 @@ time = 0;               %initial time
 
 % initialize variables
 theta = zeros(1,IMAX);
+thetaNew = zeros(1,IMAX);
 volume = zeros(1,IMAX+1);
 volumeNew = zeros(1,IMAX+1);
 psi = zeros(1,IMAX+1);
@@ -53,10 +54,12 @@ fk = zeros(1,IMAX+1);
 for i=1:IMAX+1
     if(i==IMAX+1)
         psi(i) = -2.0;%psi(IMAX)-dx/2;   % psi at surface: if >0 ponding, otherwise not
+        T(i) = 19;
     else
-        psi(i) = -x(i);      % hydrostatic pressure
+        psi(i) = -0.05;%x(i);      % hydrostatic pressure
+        T(i) = 19;
     end
-    T(i) = 19;
+    
 end
 
 % time cycle
@@ -66,7 +69,7 @@ for nit=1:NMAX
     dt = 300;
     % Right boundary conditions
     Rain=0/1000/300;
-    TR=220;
+    TR=19;
     % Left boundary conditions
     psiL =0.0;
     TL=19;
@@ -174,7 +177,7 @@ for nit=1:NMAX
         end
 
         outres = sqrt(sum(f.*f)); %outer residual
-        disp(sprintf('    Outer iteration %d, outres=%e',iNewton, outres));
+        %disp(sprintf('    Outer iteration %d, outres=%e',iNewton, outres));
         if(outres<tol)
             break %tolerance has been reached
         end
@@ -200,7 +203,7 @@ for nit=1:NMAX
             end
 
             inres=sqrt(sum(fk.*fk));
-            disp(sprintf('        Inner iteration %d, inres= %e', inner,inres));
+            %disp(sprintf('        Inner iteration %d, inres= %e', inner,inres));
             if(inres<tol)
                 break
             end
@@ -221,30 +224,36 @@ for nit=1:NMAX
             k=0.5*(KL+K(i));
             v(i) = -k*(psi(i)-psiL)/(dx/2)-k;
             thetaNew(i)=Thetaf(psi(i));
+            volumeNew(i) = thetaNew(i)*dx;
             % no flux boundary
             % v(i) = 0;
         elseif i==IMAX+1
             k=0.5*(K(i)+K(i-1));
             v(i) = -k*(psi(i)-psi(i-1))/(dx/2)-k;
+            volumeNew(i) = Hf(psi(i));
             % no flux boundary
             % v(i) = 0;
         else
             k=0.5*(K(i)+K(i-1));
             v(i) = -k*(psi(i)-psi(i-1))/dx-k;
             thetaNew(i)=Thetaf(psi(i));
+            volumeNew(i) = thetaNew(i)*dx;
         end
     end
     
-    errorMass(nit)=(sum(thetaNew) - sum(theta) - dt/dx*(Rain- 0.5*( KL+K(1) )*( (psi(1)-psiL)/(dx/2) +1 ) ) );
+    errorMass(nit)=(sum(volumeNew) - sum(volume) - dt*(Rain - 0.5*( KL+K(1) )*( (psi(1)-psiL)/(dx/2) +1 ) ) );
     disp(sprintf('    Error mass:%e', errorMass(nit) ) );
     
-    %[T, errorHeat(nit)]= ConvectionDiffusionImplicit(T,v,theta,thetaNew);
+    [T, errorHeat(nit)]= ConvectionDiffusion(T,v,theta,thetaNew,volume,volumeNew);
     %[T, errorHeat(nit)]= Diffusion(T,theta);
-    %disp(sprintf('    Error heat:%e', errorHeat(nit) ));
+    disp(sprintf('    Error heat:%e', errorHeat(nit) ));
     %disp(sprintf('    Tmax:%f', max(T) ));
-    %if(max(T)>TR)
-    %    break
-    %end
+    minT(nit) = min(T);
+    maxT(nit) = max(T);
+    if(max(T)>TR+1*10^(-9))
+        disp(sprintf('    Tmax:%f', max(T) ))
+        break
+    end
     time = time+dt;     %advance time
 end
 
