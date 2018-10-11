@@ -2,6 +2,9 @@
 % convection explicit in time, Godunov flux (upwind)
 % diffusion implicit in time (time restriction due to diffusion is too severe)
 
+%% Funziona, controllare se le oscillazioni sono accettabili (dovute alla
+% artificial diffusion) o meno
+
 function [Tnew, error]=ConvectionDiffusionImplicit(T,u,theta,thetaNew,volume,volumeNew)
 global IMAX dx dt rho cW TR TL Rain
 % Total internal energy at time level n
@@ -34,7 +37,7 @@ for i=1:IMAX+1
         c(i) = 0;
         
         heatFluxTop = 0 + rho*cW*Rain*TR;
-        E(i) = + volumeNew(i)*rho*cW*T(i);
+        E(i) = + volume(i)*rho*cW*T(i);
     elseif(i==IMAX)
         lambdap = 0.5*(Lambda(theta(i))+Lambda(theta(i)));
         lambdam = 0.5*(Lambda(theta(i-1))+Lambda(theta(i)));
@@ -78,8 +81,7 @@ heatFluxBottom = heatFluxBottom - 2*(0.5*(Lambda(theta(1))+Lambda(theta(1))))*Tn
 
 % Absolute error of internal energy E^n+1 = E^n - dt/dx*(fluxTop - fluxBottom)
 %error = Enew - E + dt/dx*(heatFluxTop-heatFluxBottom);
-Enew-E;
-error = sum(Enew) - sum(E) + dt*( rho*cW*( Rain*TR )  ...
+error = sum(Enew) - sum(E) + dt*( rho*cW*( -Rain*TR )  ...
                             -rho*cW*0.5*( u(1)*(Tnew(1)+TL) - abs(u(1))*(Tnew(1)-TL) ) + Lambda(theta(1))*2*(Tnew(1)-TL)/dx );
 error = error;
 end
