@@ -13,7 +13,7 @@ global alpha thetas thetar n m Ks psic cW rho K KL KR TR TL di IMAX dx dt Rain
 %Phisical model parameters in SI units
 thetaMethod = 1;
 day     = 24*3600;
-Ks      = 0.062/day;    %[meter/second]
+Ks      = 3.3333e-03;    %[meter/second]
 thetas  = 0.41;         %[-] saturated water content
 thetar  = 0.095;        %[-] residuel water content
 n       = 1.31;         %[-] parameter n
@@ -56,7 +56,7 @@ for i=1:IMAX+1
         psi(i) = -2.0;%psi(IMAX)-dx/2;   % psi at surface: if >0 ponding, otherwise not
         T(i) = 19;
     else
-        psi(i) = -0.05;%x(i);      % hydrostatic pressure
+        psi(i) = -x(i);      % hydrostatic pressure
         T(i) = 19;
     end
     
@@ -68,7 +68,13 @@ for nit=1:NMAX
     disp(sprintf('time iteration:%d', nit ));
     dt = 300;
     % Right boundary conditions
-    Rain=0/1000/300;
+%      if (nit<=30)
+        Rain=0/1000/300;
+%      elseif( nit>30 && nit<90)
+%          Rain = 3.3333e-03*2;
+%      else 
+%          Rain = 0;
+%      end
     TR=19;
     % Left boundary conditions
     psiL =0.0;
@@ -103,8 +109,8 @@ for nit=1:NMAX
     subplot(3,1,2)
     plot(x,volume,'o')
     ylabel('Theta [-]')
-%     subplot(4,1,3)
-%     plot(xv,v,'o')
+     %subplot(4,1,3)
+     %plot(xv,v,'o')
     subplot(3,1,3)
     plot(x,T,'r o')
     ylabel('Temperature [C]')
@@ -156,7 +162,7 @@ for nit=1:NMAX
     
     
     %% Newton method
-    tol = 5e-14; %now we start with the nested Newton method
+    tol = 5e-10; %now we start with the nested Newton method
     
     % initial guess
     psi(IMAX+1) = max(psi(IMAX+1),0.1);
@@ -240,19 +246,19 @@ for nit=1:NMAX
             volumeNew(i) = thetaNew(i)*dx;
         end
     end
-    
+    disp(sprintf('    Ponding:%e', volumeNew(IMAX+1) ));
     errorMass(nit)=(sum(volumeNew) - sum(volume) - dt*(Rain - 0.5*( KL+K(1) )*( (psi(1)-psiL)/(dx/2) +1 ) ) );
     disp(sprintf('    Error mass:%e', errorMass(nit) ) );
     
-    [T, errorHeat(nit)]= ConvectionDiffusion(T,v,theta,thetaNew,volume,volumeNew);
+    [T, errorHeat(nit)]= ConvectionDiffusionImplicit(T,v,theta,thetaNew,volume,volumeNew);
     %[T, errorHeat(nit)]= Diffusion(T,theta);
     disp(sprintf('    Error heat:%e', errorHeat(nit) ));
     %disp(sprintf('    Tmax:%f', max(T) ));
     minT(nit) = min(T);
     maxT(nit) = max(T);
-    if(max(T)>TR+1*10^(-9))
-        disp(sprintf('    Tmax:%f', max(T) ))
-        break
+    if(max(T)>TR+1*10^(-7) || min(T)<TR+1*10^(-7) )
+        disp(sprintf('    differenze:%e    %e', max(T)-19, 19-min(T)  ))
+        %break
     end
     time = time+dt;     %advance time
 end
